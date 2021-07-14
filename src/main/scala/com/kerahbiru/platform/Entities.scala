@@ -10,6 +10,23 @@ import io.circe.generic.extras.defaults._
 
 object Entities {
 
+  // topic : topic/userid/client111
+  /*
+  {
+  [
+    {
+    "type": "temperature",
+    "value": 30.1
+    },
+    {
+    "type": "humidity",
+    "value": 13
+    }
+  ]
+  }
+
+
+   */
   case class UserId(value: String) extends AnyVal
 
   case class ClientId(value: String) extends AnyVal
@@ -24,13 +41,17 @@ object Entities {
 
   case class PolicyName(value: String) extends AnyVal
 
-  case class Topic(topic: String) extends AnyVal
+  case class Topic(value: String) extends AnyVal
+
+  object Topic {
+
+    def fromClientId(clientId: ClientId) = {}
+
+  }
 
   case class Device(
       clientId: ClientId,
-      certificateId: CertificateId,
       certificateArn: CertificateArn,
-      policyId: PolicyId,
       policyArn: PolicyArn,
       policyName: PolicyName,
       topic: Topic
@@ -55,20 +76,11 @@ object Entities {
   implicit val AwsResponseDecoder: Decoder[AwsResponse] = deriveDecoder
 
   implicit val CreateKeyAndCertificateResponseDecoder: Decoder[CreateKeyAndCertificateResponse] = deriveDecoder
-  /*
-  implicit val responseDecoder: Decoder[GetApiResponse] = (c: HCursor) =>
-    for {
-      from <- c.downField("from").as[Currency]
-      to <- c.downField("to").as[Currency]
-      price <- c.downField("price").as[Price]
-      ts <- c.downField("time_stamp").as[Timestamp]
-    } yield {
-      GetApiResponse(from, to, price, ts)
-  }
-   */
+
   implicit val CertificateArnDecoder: Decoder[CertificateArn] = deriveUnwrappedDecoder
 
   implicit val KeyPairDecoder: Decoder[KeyPair] = deriveDecoder
+
   /*
   implicit val currencyEncoder: Encoder[Currency] =
     Encoder.instance[Currency] { show.show _ andThen Json.fromString }
