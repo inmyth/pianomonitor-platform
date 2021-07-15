@@ -17,7 +17,7 @@ case class Services(controlRepo: ControlRepo) {
 
   def process(): Task[js.Object] =
     for {
-      a <- controlRepo.control.createPolicy(UserId("martin"), ClientId.generate)
+      a <- controlRepo.control.createCertificate()
     } yield new js.Object(a)
 
 }

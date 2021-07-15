@@ -3,11 +3,14 @@ package com.kerahbiru.platform.repo
 import com.kerahbiru.platform.Entities.{ClientId, UserId}
 import com.kerahbiru.platform.repo.ControlRepoImpl.createPolicyJson
 import com.kerahbiru.platform.{Config, DomainError, Entities, IotError}
-import facade.amazonaws.services.iot.{CreatePolicyRequest, Iot, PolicyArn}
+import facade.amazonaws.services.iot.{
+  CreateKeysAndCertificateRequest,
+  CreateKeysAndCertificateResponse,
+  CreatePolicyRequest,
+  Iot,
+  PolicyArn
+}
 import monix.eval.Task
-
-import scala.scalajs.js
-import scala.scalajs.js.UndefOr
 
 class ControlRepoImpl(config: Config, iot: Iot) extends IControlRepo(config) {
 
@@ -28,9 +31,20 @@ class ControlRepoImpl(config: Config, iot: Iot) extends IControlRepo(config) {
         p.policyArn.toOption match {
           case Some(value) => Right(value)
           case None        => Left(IotError("Policy creation response empty"))
-
         }
       )
+      .onErrorHandle(e => Left(IotError(e.getMessage)))
+
+  override def createCertificate(): Task[Either[DomainError, CreateKeysAndCertificateResponse]] =
+    Task
+      .fromFuture(
+        iot.createKeysAndCertificateFuture(
+          CreateKeysAndCertificateRequest(
+            setAsActive = true
+          )
+        )
+      )
+      .map(p => Right(p))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
 }
