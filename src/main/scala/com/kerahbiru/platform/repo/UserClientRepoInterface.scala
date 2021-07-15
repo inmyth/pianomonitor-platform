@@ -1,23 +1,25 @@
 package com.kerahbiru.platform.repo
 
-import com.kerahbiru.platform.Entities.{CertCreationResponse, ClientId, UserId}
+import com.kerahbiru.platform.Entities.{ClientId, UserClientItem, UserId}
 import com.kerahbiru.platform.{Config, ServiceError}
 import facade.amazonaws.services.dynamodb.DynamoDB
-import facade.amazonaws.services.iot.{CertificateArn, PolicyName}
 import monix.eval.Task
 
 abstract class UserClientRepoInterface(config: Config) {
 
-  def putDevice(
+  def putClient(
       userId: UserId,
-      clientId: ClientId,
-      certificateArn: CertificateArn,
-      policyName: PolicyName
+      item: UserClientItem
   ): Task[Either[ServiceError, Unit]]
 
-//  def listDevices(userId: UserId): Task[Either[ServiceError, List[Device]]]
+  def listDevices(userId: UserId): Task[Either[ServiceError, List[UserClientItem]]]
 
-  def deleteDevice(userId: UserId, clientId: ClientId): Task[Either[ServiceError, Unit]]
+  def getClient(
+      userId: UserId,
+      clientId: ClientId
+  ): Task[Either[ServiceError, UserClientItem]]
+
+  def deleteClient(userId: UserId, clientId: ClientId): Task[Either[ServiceError, Unit]]
 
 }
 

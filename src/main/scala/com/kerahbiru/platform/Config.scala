@@ -32,7 +32,7 @@ object Config {
   final case class ThingManagement(config: Config) {
     val iot = new Iot()
 
-    val control: ThingManagementInterface = ThingManagementInterface.real(config, iot)
+    val tm: ThingManagementInterface = ThingManagementInterface.real(config, iot)
   }
 
   object ThingManagement {
@@ -43,7 +43,7 @@ object Config {
 
     val db = new DynamoDB()
 
-    val client: UserClientRepoInterface = UserClientRepoInterface.real(config, db)
+    val repo: UserClientRepoInterface = UserClientRepoInterface.real(config, db)
   }
 
   object UserClientRepo {

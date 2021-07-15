@@ -1,8 +1,8 @@
 package com.kerahbiru.platform
 
 import facade.amazonaws.services.iot.{CertificateArn, CertificateId, CertificatePem, KeyPair, PolicyArn, PolicyName}
-import io.circe.Decoder
-import io.circe.generic.extras.semiauto.deriveUnwrappedDecoder
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.extras.semiauto.{deriveUnwrappedCodec, deriveUnwrappedDecoder, deriveUnwrappedEncoder}
 
 import java.util.UUID
 //import io.circe.generic.semiauto.deriveDecoder
@@ -39,21 +39,7 @@ object Entities {
     def generate: ClientId = ClientId(UUID.randomUUID().toString)
   }
 
-//  case class CertificateId(value: String) extends AnyVal
-
-//  case class CertificateArn(value: String) extends AnyVal
-
-//  case class PolicyId(value: String) extends AnyVal
-
-//  case class PolicyName(value: String) extends AnyVal
-
-//  case class Topic(value: String) extends AnyVal
-
-  object Topic {
-
-    def fromClientId(clientId: ClientId) = {}
-
-  }
+  case class UserClientItem(clientId: ClientId, certificateArn: CertificateArn, policyName: PolicyName)
 
   case class CertCreationResponse(certificateArn: CertificateArn, certificatePem: CertificatePem, keyPair: KeyPair)
 
@@ -80,6 +66,9 @@ object Entities {
 //  implicit val CertificateArnDecoder: Decoder[CertificateArn] = deriveUnwrappedDecoder
 //
 //  implicit val KeyPairDecoder: Decoder[KeyPair] = deriveDecoder
+  implicit val ClientIdEncoder: Encoder[ClientId] = deriveUnwrappedEncoder
+
+  implicit val UserClientItemEncoder: Encoder[UserClientItem] = deriveEncoder
 
   /*
   implicit val currencyEncoder: Encoder[Currency] =

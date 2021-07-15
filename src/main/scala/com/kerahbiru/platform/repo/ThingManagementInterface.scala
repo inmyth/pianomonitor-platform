@@ -2,14 +2,7 @@ package com.kerahbiru.platform.repo
 
 import com.kerahbiru.platform.Entities.{CertCreationResponse, ClientId, UserId}
 import com.kerahbiru.platform.{Config, ServiceError}
-import facade.amazonaws.services.iot.{
-  CertificateArn,
-  CertificateId,
-  CreateKeysAndCertificateResponse,
-  Iot,
-  PolicyArn,
-  PolicyName
-}
+import facade.amazonaws.services.iot.{CertificateArn, CertificateId, Iot, PolicyName}
 import monix.eval.Task
 
 abstract class ThingManagementInterface(config: Config) {
@@ -17,8 +10,6 @@ abstract class ThingManagementInterface(config: Config) {
   def createPolicy(userId: UserId, clientId: ClientId): Task[Either[ServiceError, PolicyName]]
 
   def createCertificate(): Task[Either[ServiceError, CertCreationResponse]]
-
-//  def storeAsDevice(userId: UserId, clientId: ClientId, certificateArn: CertificateArn, policyArn: PolicyArn) = ???
 
   def attachPolicyToCertificate(
       policyName: PolicyName,
