@@ -37,6 +37,7 @@ val awsSdkVersion              = "2.798.0"
 val awsSdkScalajsFacadeVersion = s"0.32.0-v${awsSdkVersion}"
 //libraryDependencies += "net.exoego"    %%% "aws-sdk-scalajs-facade-sns"      % awsSdkScalajsFacadeVersion
 libraryDependencies += "net.exoego" %%% "aws-sdk-scalajs-facade-dynamodb" % awsSdkScalajsFacadeVersion
+libraryDependencies += "net.exoego" %%% "aws-sdk-scalajs-facade-iot"      % awsSdkScalajsFacadeVersion
 //libraryDependencies += "net.exoego"    %%% "aws-sdk-scalajs-facade-kms"      % awsSdkScalajsFacadeVersion
 npmDependencies in Compile += "aws-sdk" -> awsSdkVersion
 

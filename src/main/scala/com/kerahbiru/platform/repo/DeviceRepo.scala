@@ -11,6 +11,6 @@ abstract class DeviceRepo(config: Config) {
 
   def listDevices(userId: UserId): Task[Either[DomainError, List[Device]]]
 
-  def deleteDevice(clientId: ClientId): Task[Unit]
+  def deleteDevice(userId: UserId, clientId: ClientId): Task[Either[DomainError, Unit]]
 
 }

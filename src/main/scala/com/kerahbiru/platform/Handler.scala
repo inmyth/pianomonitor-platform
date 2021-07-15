@@ -6,6 +6,7 @@ import net.exoego.facade.aws_lambda.{APIGatewayProxyEvent, APIGatewayProxyResult
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichFutureNonThenable
+import scala.scalajs.js.JSON
 import scala.scalajs.js.annotation.JSExportTopLevel
 
 object Handler {
@@ -15,8 +16,10 @@ object Handler {
   val handler: js.Function2[APIGatewayProxyEvent, Context, js.Promise[js.Object]] = {
     (event: APIGatewayProxyEvent, _: Context) =>
       (for {
-        a <- Task(js.Object("aaaaa"))
-      } yield a).runToFuture.toJSPromise
+        a <- Task(Config.load())
+        b <- Task(Services.fromConfig(a))
+        c <- b.process()
+      } yield c).runToFuture.toJSPromise
 
   }
 }
