@@ -1,14 +1,15 @@
 package com.kerahbiru.platform
 
 import cats.data.Reader
-import com.kerahbiru.platform.repo.{ControlRepoImpl, IControlRepo}
+import com.kerahbiru.platform.repo.{ThingManagementAwsIot, UserClientRepoInterface, ThingManagementInterface}
 import facade.amazonaws.services.dynamodb.DynamoDB
-import facade.amazonaws.services.iot.Iot
+import facade.amazonaws.services.iot.{Iot, ThingArn}
 
 import scala.scalajs.js
 
 final case class Config(
-    thingArn: String,
+    thingArn: ThingArn,
+    thingName: String,
     thingPrincipal: String,
     thingRegion: String,
     ddbDeviceTable: String
@@ -18,38 +19,37 @@ object Config {
 
   def load(): Config = {
     val ddbDeviceTable = js.Dynamic.global.process.env.DDB_DEVICE_TABLE.asInstanceOf[js.UndefOr[String]].toOption.get
-    val thingArn       = js.Dynamic.global.process.env.THING_ARN.asInstanceOf[js.UndefOr[String]].toOption.get
+    val thingArn       = js.Dynamic.global.process.env.THING_ARN.asInstanceOf[js.UndefOr[ThingArn]].toOption.get
     // arn:aws:iot:us-west-2:734435107319:thing/MyWindowsIOT
     val arnEls         = thingArn.split("[:]")
+    val arnElsBs       = thingArn.split("[/]")
     val thingRegion    = arnEls(3)
     val thingPrincipal = arnEls(4)
-    Config(thingArn, thingPrincipal, thingRegion, ddbDeviceTable)
+    val thingName      = arnElsBs.last
+    Config(thingArn, thingName, thingPrincipal, thingRegion, ddbDeviceTable)
   }
 
-  final case class ControlRepo(config: Config) {
+  final case class ThingManagement(config: Config) {
     val iot = new Iot()
 
-    val control = IControlRepo.real(config, iot)
+    val control: ThingManagementInterface = ThingManagementInterface.real(config, iot)
   }
 
-  object ControlRepo {
-    val fromConfig: Reader[Config, ControlRepo] = Reader(ControlRepo(_))
+  object ThingManagement {
+    val fromConfig: Reader[Config, ThingManagement] = Reader(ThingManagement(_))
   }
 
-  /*
-    final case class PublisherConfig(config: Config) {
-    val sns = new SNS()
+  final case class UserClientRepo(config: Config) {
 
-    val pub: Pub = config.envMode match {
-      case InMem => Pub.fakeBroker(Config.ec, config)
+    val db = new DynamoDB()
 
-      case _ => Pub.sns(Config.ec, config, sns)
-    }
+    val client: UserClientRepoInterface = UserClientRepoInterface.real(config, db)
+  }
+
+  object UserClientRepo {
+
+    val fromConfig: Reader[Config, UserClientRepo] = Reader(UserClientRepo(_))
 
   }
 
-  object PublisherConfig {
-    val fromConfig: Reader[Config, PublisherConfig] = Reader(PublisherConfig(_))
-  }
-   */
 }

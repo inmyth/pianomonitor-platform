@@ -1,27 +1,43 @@
 package com.kerahbiru.platform.repo
 
-import com.kerahbiru.platform.Entities.{ClientId, Device, Topic, UserId}
-import com.kerahbiru.platform.{Config, DomainError, DynamoDbError, Entities}
-import facade.amazonaws.services.dynamodb.{
-  AttributeValue,
-  DeleteItemInput,
-  DynamoDB,
-  PutItemInput,
-  QueryInput,
-  QueryOutput
-}
+import com.kerahbiru.platform.Entities.ClientId
+import com.kerahbiru.platform.{Config, DynamoDbError, Entities, ServiceError}
+import facade.amazonaws.services.dynamodb.{AttributeValue, DynamoDB, PutItemInput}
+import facade.amazonaws.services.iot.{CertificateArn, PolicyName}
 import monix.eval.Task
 
-import scala.collection.mutable.ListBuffer
-import scala.scalajs.js
 import scala.scalajs.js.Dictionary
 
-class DeviceRepoImpl(config: Config) extends DeviceRepo(config) {
+class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRepoInterface(config) {
 
 //  val db: DynamoDB  = config.ddb
   val table: String = config.ddbDeviceTable
 
-//  override def deleteDevice(userId: UserId, clientId: Entities.ClientId): Task[Either[DomainError, Unit]] =
+  override def putDevice(
+      userId: Entities.UserId,
+      clientId: ClientId,
+      certificateArn: CertificateArn,
+      policyName: PolicyName
+  ): Task[Either[ServiceError, Unit]] =
+    Task
+      .fromFuture(
+        db.putItemFuture(
+          PutItemInput(
+            Item = Dictionary(
+              "userId"   -> AttributeValue.S(userId.value),
+              "clientId" -> AttributeValue.S(clientId.value),
+//              "policyArn"      -> AttributeValue.S(),
+              "policyName"     -> AttributeValue.S(policyName),
+              "certificateArn" -> AttributeValue.S(certificateArn)
+            ),
+            TableName = table
+          )
+        )
+      )
+      .map(_ => Right(()))
+      .onErrorHandle(e => Left(DynamoDbError(e.getMessage)))
+
+  //  override def deleteDevice(userId: UserId, clientId: Entities.ClientId): Task[Either[DomainError, Unit]] =
 //    Task
 //      .fromFuture(
 //        db.deleteItemFuture(
@@ -105,9 +121,12 @@ class DeviceRepoImpl(config: Config) extends DeviceRepo(config) {
 //        accumulate(userId, accum, createLoadTask(userId, lastKey))
 //      }
 //    })
-  override def putDevice(userId: UserId, device: Device): Task[Either[DomainError, Unit]] = ???
+//  override def putDevice(userId: UserId, device: Device): Task[Either[DomainError, Unit]] = ???
+//
+//  override def listDevices(userId: UserId): Task[Either[DomainError, List[Device]]] = ???
+//
+//  override def deleteDevice(userId: UserId, clientId: ClientId): Task[Either[DomainError, Unit]] = ???
+  override def deleteDevice(userId: Entities.UserId, clientId: Entities.ClientId): Task[Either[ServiceError, Unit]] =
+    ???
 
-  override def listDevices(userId: UserId): Task[Either[DomainError, List[Device]]] = ???
-
-  override def deleteDevice(userId: UserId, clientId: ClientId): Task[Either[DomainError, Unit]] = ???
 }

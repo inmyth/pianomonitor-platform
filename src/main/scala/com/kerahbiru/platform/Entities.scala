@@ -1,6 +1,6 @@
 package com.kerahbiru.platform
 
-import facade.amazonaws.services.iot.{CertificateArn, CertificateId, PolicyArn, PolicyName}
+import facade.amazonaws.services.iot.{CertificateArn, CertificateId, CertificatePem, KeyPair, PolicyArn, PolicyName}
 import io.circe.Decoder
 import io.circe.generic.extras.semiauto.deriveUnwrappedDecoder
 
@@ -55,7 +55,7 @@ object Entities {
 
   }
 
-  case class Device(clientId: ClientId, certificateArn: CertificateArn, policyArn: PolicyArn, policyName: PolicyName)
+  case class CertCreationResponse(certificateArn: CertificateArn, certificatePem: CertificatePem, keyPair: KeyPair)
 
 //  case class AwsResponse(
 //      statusCode: Int,
