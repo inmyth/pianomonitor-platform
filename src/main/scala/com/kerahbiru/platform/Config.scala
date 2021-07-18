@@ -20,7 +20,6 @@ object Config {
   def load(): Config = {
     val ddbDeviceTable = js.Dynamic.global.process.env.DDB_DEVICE_TABLE.asInstanceOf[js.UndefOr[String]].toOption.get
     val thingArn       = js.Dynamic.global.process.env.THING_ARN.asInstanceOf[js.UndefOr[ThingArn]].toOption.get
-    // arn:aws:iot:us-west-2:734435107319:thing/MyWindowsIOT
     val arnEls         = thingArn.split("[:]")
     val arnElsBs       = thingArn.split("[/]")
     val thingRegion    = arnEls(3)

@@ -55,7 +55,7 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
       )
       .map(p =>
         (p.certificateArn.toOption, p.certificateId.toOption, p.certificatePem.toOption, p.keyPair.toOption) match {
-          case (Some(certArn), Some(certId), Some(certPem), Some(keyPair)) =>
+          case (Some(certArn), Some(_), Some(certPem), Some(keyPair)) =>
             Right(CertCreationResponse(certArn, certPem, keyPair))
           case _ => Left(IotError("Certificate creation response empty"))
         }
@@ -170,7 +170,7 @@ object ThingManagementAwsIot {
       |  {
       |    "Effect": "Allow",
       |    "Action": "iot:Subscribe",
-      |    "Resource": "arn:aws:iot:$region:$principal:topicfilter/${userId.value}/${clientId.value}"
+      |    "Resource": "arn:aws:iot:$region:$principal:topicfilter/${clientId.value}"
       |  },
       |  {
       |    "Effect": "Allow",
@@ -179,7 +179,11 @@ object ThingManagementAwsIot {
       |  },
       |  {
       |    "Effect": "Allow",
-      |    "Action": "iot:Publish",
+      |    "Action": [
+      |        "iot:Publish",
+      |        "iot:Receive",
+      |        "iot:Republish"
+      |      ],
       |    "Resource": "arn:aws:iot:$region:$principal:topic/${clientId.value}"
       |  }
       |]
