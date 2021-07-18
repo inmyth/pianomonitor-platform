@@ -1,6 +1,6 @@
 package com.kerahbiru.platform.repo
 
-import com.kerahbiru.platform.Entities.{ClientId, UserClientItem, UserId}
+import com.kerahbiru.platform.Entities.{ClientId, ClientName, UserClientItem, UserId}
 import com.kerahbiru.platform.{Config, DynamoDbError, Entities, ServiceError}
 import facade.amazonaws.services.dynamodb.{
   AttributeMap,
@@ -34,6 +34,8 @@ class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRep
             Item = Dictionary(
               "userId"         -> AttributeValue.S(userId.value),
               "clientId"       -> AttributeValue.S(item.clientId.value),
+              "creationTs"     -> AttributeValue.NFromLong(item.creationTs),
+              "clientName"     -> AttributeValue.S(item.clientName.value),
               "policyName"     -> AttributeValue.S(item.policyName),
               "certificateArn" -> AttributeValue.S(item.certificateArn)
             ),
@@ -65,9 +67,11 @@ class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRep
 
   val mapper: AttributeMap => UserClientItem = a => {
     val clientId       = ClientId(a.get("clientId").get.S.get)
+    val clientName     = ClientName(a.get("clientName").get.S.get)
+    val creationTs     = a.get("creationTs").get.N.get.toLong
     val policyName     = a.get("policyName").get.S.get
     val certificateArn = a.get("certificateArn").get.S.get
-    UserClientItem(clientId, certificateArn, policyName)
+    UserClientItem(clientId, clientName, creationTs, certificateArn, policyName)
   }
 
   override def getClient(userId: Entities.UserId, clientId: ClientId): Task[Either[ServiceError, UserClientItem]] =
