@@ -97,6 +97,10 @@ object Entities {
 
   case class CreateClientDto(name: String)
 
+  case class DeleteClientDto(clientId: String)
+
+  implicit val DeleteClientDtoDecoder: Decoder[DeleteClientDto] = deriveDecoder
+
   implicit val CreateClientDtoDecoder: Decoder[CreateClientDto] = deriveDecoder
 
   implicit val ClientNameEncoder: Encoder[ClientName] = deriveUnwrappedEncoder

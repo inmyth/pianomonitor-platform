@@ -1,7 +1,7 @@
 package com.kerahbiru.platform.repo
 
 import com.kerahbiru.platform.Entities.{ClientId, ClientName, UserClientItem, UserId}
-import com.kerahbiru.platform.{Config, DynamoDbError, Entities, ServiceError}
+import com.kerahbiru.platform.{Config, DynamoDbError, Entities, ServiceError, ValidationError}
 import facade.amazonaws.services.dynamodb.{
   AttributeMap,
   AttributeValue,
@@ -90,7 +90,7 @@ class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRep
       .map(p =>
         p.Item.toOption match {
           case Some(value) => Right(mapper.apply(value))
-          case None        => Left(DynamoDbError("Item not found"))
+          case None        => Left(ValidationError("Item not found"))
         }
       )
       .onErrorHandle(e => Left(DynamoDbError(e.getMessage)))

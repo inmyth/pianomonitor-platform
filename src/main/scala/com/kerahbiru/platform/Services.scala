@@ -7,6 +7,7 @@ import com.kerahbiru.platform.Entities.{
   ClientName,
   CreateClientDto,
   CreateClientResponse,
+  DeleteClientDto,
   UserClientItem,
   UserId
 }
@@ -24,10 +25,6 @@ case class Services(thingManagement: ThingManagement, clientRepo: UserClientRepo
   val tm   = thingManagement.tm
   val repo = clientRepo.repo
 
-  def f(body: String): Task[Either[ServiceError, CreateClientDto]] =
-    Task(
-      decode[CreateClientDto](body) fold (_ => Left(RequestError), p => Right(p))
-    )
   def createClient(userId: UserId, body: String): EitherT[Task, ServiceError, Json] =
     for {
       a <- EitherT(
@@ -55,19 +52,24 @@ case class Services(thingManagement: ThingManagement, clientRepo: UserClientRepo
       )
     } yield g.asJson
 
-  def deleteClient(userId: UserId, clientId: ClientId): EitherT[Task, ServiceError, Json] =
+  def deleteClient(userId: UserId, body: String): EitherT[Task, ServiceError, Json] =
     for {
-      a <- EitherT(repo.getClient(userId, clientId))
-      certificateArn = a.certificateArn
-      policyName     = a.policyName
+      a <- EitherT(
+        Task(
+          decode[DeleteClientDto](body) fold (_ => Left(RequestError), p => Right(ClientId(p.clientId)))
+        )
+      )
+      b <- EitherT(repo.getClient(userId, a))
+      certificateArn = b.certificateArn
+      policyName     = b.policyName
       _ <- EitherT(tm.detachCertificateFromThing(certificateArn))
       _ <- EitherT(tm.detachPolicyFromCertificate(policyName, certificateArn))
       certId = certificateArn.split("[/]").last
       _ <- EitherT(tm.deactivateCertificate(certId))
       _ <- EitherT(tm.deleteCertificate(certId))
       _ <- EitherT(tm.deletePolicy(policyName))
-      _ <- EitherT(repo.deleteClient(userId, clientId))
-    } yield (Json.Null)
+      _ <- EitherT(repo.deleteClient(userId, a))
+    } yield "{}".asJson
 
   def listClients(userId: UserId): EitherT[Task, ServiceError, Json] =
     for {
@@ -92,6 +94,7 @@ case class Services(thingManagement: ThingManagement, clientRepo: UserClientRepo
         event.path match {
           case "/device/list"   => Right(listClients(a))
           case "/device/create" => Right(createClient(a, event.body.asInstanceOf[String]))
+          case "/device/delete" => Right(deleteClient(a, event.body.asInstanceOf[String]))
           case _                => Left(ApiError(s"${event.path} not recognized"))
         }
       })
