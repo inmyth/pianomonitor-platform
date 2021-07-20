@@ -4,7 +4,6 @@ import cats.data.Reader
 import com.kerahbiru.platform.repo.{
   IdentityManagementCognito,
   IdentityManagementInterface,
-  ThingManagementAwsIot,
   ThingManagementInterface,
   UserDeviceRepoInterface
 }

@@ -1,6 +1,6 @@
 package com.kerahbiru.platform.repo
 
-import com.kerahbiru.platform.Entities.{CertCreationResponse, DeviceId, UserId}
+import com.kerahbiru.platform.Entities.{CertCreationResponse, DeviceId}
 import com.kerahbiru.platform.repo.ThingManagementAwsIot.createPolicyJson
 import com.kerahbiru.platform.{Config, Entities, IotError, ServiceError}
 import facade.amazonaws.services.cognitoidentity.IdentityId
@@ -25,15 +25,15 @@ import monix.eval.Task
 class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInterface(config) {
 
   override def createPolicy(
-      userId: Entities.UserId,
+      identityId: IdentityId,
       deviceId: Entities.DeviceId
   ): Task[Either[ServiceError, PolicyName]] =
     Task
       .fromFuture {
         iot.createPolicyFuture(
           CreatePolicyRequest(
-            policyDocument = createPolicyJson(config.awsAccount, config.region, userId, deviceId),
-            policyName = s"${userId.value}_${deviceId.value}"
+            policyDocument = createPolicyJson(config.awsAccount, config.region, identityId, deviceId),
+            policyName = s"""${identityId.replace(":", "-")}_${deviceId.value}"""
           )
         )
       }
@@ -76,7 +76,7 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           )
         )
       )
-      .map(_ => Right())
+      .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
   override def attachPolicyToUser(policyName: PolicyName, identityId: IdentityId): Task[Either[ServiceError, Unit]] =
@@ -89,7 +89,7 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           )
         )
       )
-      .map(_ => Right())
+      .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
   override def attachCertificateToThing(
@@ -104,7 +104,7 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           )
         )
       )
-      .map(_ => Right())
+      .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
   override def detachCertificateFromThing(certificateArn: CertificateArn): Task[Either[ServiceError, Unit]] =
@@ -117,7 +117,7 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           )
         )
       )
-      .map(_ => Right())
+      .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
   override def detachPolicyFromCertificate(
@@ -133,7 +133,7 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           )
         )
       )
-      .map(_ => Right())
+      .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
   override def detachPolicyFromUser(policyName: PolicyName, identityId: IdentityId): Task[Either[ServiceError, Unit]] =
@@ -146,7 +146,7 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           )
         )
       )
-      .map(_ => Right())
+      .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
   override def deleteCertificate(certificateId: CertificateId): Task[Either[ServiceError, Unit]] =
@@ -159,7 +159,7 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           )
         )
       )
-      .map(_ => Right())
+      .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
   override def deletePolicy(policyName: PolicyName): Task[Either[ServiceError, Unit]] =
@@ -171,7 +171,7 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           )
         )
       )
-      .map(_ => Right())
+      .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
   override def deactivateCertificate(certificateId: CertificateId): Task[Either[ServiceError, Unit]] =
@@ -184,26 +184,26 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           )
         )
       )
-      .map(_ => Right())
+      .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
 }
 
 object ThingManagementAwsIot {
 
-  def createPolicyJson(principal: String, region: String, userId: UserId, deviceId: DeviceId): String =
+  def createPolicyJson(principal: String, region: String, identityId: IdentityId, deviceId: DeviceId): String =
     s"""{
       |"Version": "2012-10-17",
       |"Statement": [
       |  {
       |    "Effect": "Allow",
       |    "Action": "iot:Subscribe",
-      |    "Resource": "arn:aws:iot:$region:$principal:topicfilter/${userId.value}/${deviceId.value}"
+      |    "Resource": "arn:aws:iot:$region:$principal:topicfilter/$identityId/${deviceId.value}"
       |  },
       |  {
       |    "Effect": "Allow",
       |    "Action": "iot:Connect",
-      |    "Resource": "arn:aws:iot:$region:$principal:client/${userId.value}/${deviceId.value}"
+      |    "Resource": "arn:aws:iot:$region:$principal:client/*"
       |  },
       |  {
       |    "Effect": "Allow",
@@ -212,7 +212,7 @@ object ThingManagementAwsIot {
       |        "iot:Receive",
       |        "iot:Republish"
       |      ],
-      |    "Resource": "arn:aws:iot:$region:$principal:topic/${userId.value}/${deviceId.value}"
+      |    "Resource": "arn:aws:iot:$region:$principal:topic/$identityId/${deviceId.value}"
       |  }
       |]
       |}""".stripMargin

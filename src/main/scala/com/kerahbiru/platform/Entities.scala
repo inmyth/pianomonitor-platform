@@ -9,8 +9,6 @@ import java.util.UUID
 
 object Entities {
 
-  case class UserId(value: String) extends AnyVal // sub
-
   case class DeviceId(value: String) extends AnyVal
 
   case class DeviceName(value: String) extends AnyVal

@@ -1,25 +1,26 @@
 package com.kerahbiru.platform.repo
 
-import com.kerahbiru.platform.Entities.{DeviceId, UserDeviceItem, UserId}
+import com.kerahbiru.platform.Entities.{DeviceId, UserDeviceItem}
 import com.kerahbiru.platform.{Config, ServiceError}
+import facade.amazonaws.services.cognitoidentity.IdentityId
 import facade.amazonaws.services.dynamodb.DynamoDB
 import monix.eval.Task
 
 abstract class UserDeviceRepoInterface(config: Config) {
 
   def putDevice(
-      userId: UserId,
+      identityId: IdentityId,
       item: UserDeviceItem
   ): Task[Either[ServiceError, Unit]]
 
-  def listDevices(userId: UserId): Task[Either[ServiceError, List[UserDeviceItem]]]
+  def listDevices(identityId: IdentityId): Task[Either[ServiceError, List[UserDeviceItem]]]
 
   def getDevice(
-      userId: UserId,
+      identityId: IdentityId,
       deviceId: DeviceId
   ): Task[Either[ServiceError, UserDeviceItem]]
 
-  def deleteDevice(userId: UserId, deviceId: DeviceId): Task[Either[ServiceError, Unit]]
+  def deleteDevice(identityId: IdentityId, deviceId: DeviceId): Task[Either[ServiceError, Unit]]
 
 }
 

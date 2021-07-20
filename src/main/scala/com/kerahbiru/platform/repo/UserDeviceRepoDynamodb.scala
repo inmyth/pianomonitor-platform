@@ -1,7 +1,8 @@
 package com.kerahbiru.platform.repo
 
-import com.kerahbiru.platform.Entities.{DeviceId, DeviceName, UserDeviceItem, UserId}
+import com.kerahbiru.platform.Entities.{DeviceId, DeviceName, UserDeviceItem}
 import com.kerahbiru.platform._
+import facade.amazonaws.services.cognitoidentity.IdentityId
 import facade.amazonaws.services.dynamodb.{
   AttributeMap,
   AttributeValue,
@@ -23,7 +24,7 @@ class UserDeviceRepoDynamodb(config: Config, db: DynamoDB) extends UserDeviceRep
   val table: String = config.ddbDeviceTable
 
   override def putDevice(
-      userId: Entities.UserId,
+      identityId: IdentityId,
       item: UserDeviceItem
   ): Task[Either[ServiceError, Unit]] =
     Task
@@ -31,7 +32,7 @@ class UserDeviceRepoDynamodb(config: Config, db: DynamoDB) extends UserDeviceRep
         db.putItemFuture(
           PutItemInput(
             Item = Dictionary(
-              "userId"         -> AttributeValue.S(userId.value),
+              "identityId"     -> AttributeValue.S(identityId),
               "deviceId"       -> AttributeValue.S(item.deviceId.value),
               "creationTs"     -> AttributeValue.NFromLong(item.creationTs),
               "deviceName"     -> AttributeValue.S(item.deviceName.value),
@@ -45,14 +46,14 @@ class UserDeviceRepoDynamodb(config: Config, db: DynamoDB) extends UserDeviceRep
       .map(_ => Right(()))
       .onErrorHandle(e => Left(DynamoDbError(e.getMessage)))
 
-  override def deleteDevice(userId: Entities.UserId, deviceId: Entities.DeviceId): Task[Either[ServiceError, Unit]] =
+  override def deleteDevice(identityId: IdentityId, deviceId: Entities.DeviceId): Task[Either[ServiceError, Unit]] =
     Task
       .fromFuture(
         db.deleteItemFuture(
           DeleteItemInput(
             Key = Dictionary(
-              "userId"   -> AttributeValue.S(userId.value),
-              "deviceId" -> AttributeValue.S(deviceId.value)
+              "identityId" -> AttributeValue.S(identityId),
+              "deviceId"   -> AttributeValue.S(deviceId.value)
             ),
             TableName = table
           )
@@ -73,14 +74,14 @@ class UserDeviceRepoDynamodb(config: Config, db: DynamoDB) extends UserDeviceRep
     UserDeviceItem(deviceId, deviceName, creationTs, certificateArn, policyName)
   }
 
-  override def getDevice(userId: Entities.UserId, deviceId: DeviceId): Task[Either[ServiceError, UserDeviceItem]] =
+  override def getDevice(identityId: IdentityId, deviceId: DeviceId): Task[Either[ServiceError, UserDeviceItem]] =
     Task
       .fromFuture(
         db.getItemFuture(
           GetItemInput(
             Key = Dictionary(
-              "userId"   -> AttributeValue.S(userId.value),
-              "deviceId" -> AttributeValue.S(deviceId.value)
+              "identityId" -> AttributeValue.S(identityId),
+              "deviceId"   -> AttributeValue.S(deviceId.value)
             ),
             TableName = table
           )
@@ -94,13 +95,13 @@ class UserDeviceRepoDynamodb(config: Config, db: DynamoDB) extends UserDeviceRep
       )
       .onErrorHandle(e => Left(DynamoDbError(e.getMessage)))
 
-  override def listDevices(userId: Entities.UserId): Task[Either[ServiceError, List[UserDeviceItem]]] =
-    accumulate(userId, ListBuffer.empty, createLoadTask(userId, None))
+  override def listDevices(identityId: IdentityId): Task[Either[ServiceError, List[UserDeviceItem]]] =
+    accumulate(identityId, ListBuffer.empty, createLoadTask(identityId, None))
       .map(p => Right(p.toList))
       .onErrorHandle(e => Left(DynamoDbError(e.getMessage)))
 
   def createLoadTask(
-      userId: UserId,
+      identityId: IdentityId,
       startKey: Option[facade.amazonaws.services.dynamodb.Key]
   ): Task[QueryOutput] =
     Task
@@ -108,9 +109,9 @@ class UserDeviceRepoDynamodb(config: Config, db: DynamoDB) extends UserDeviceRep
         db.queryFuture(
           QueryInput(
             TableName = table,
-            KeyConditionExpression = "userId = :v1",
+            KeyConditionExpression = "identityId = :v1",
             ExpressionAttributeValues = Dictionary(
-              ":v1" -> AttributeValue.S(userId.value)
+              ":v1" -> AttributeValue.S(identityId)
             ),
             ExclusiveStartKey = if (startKey.isEmpty) js.undefined else startKey.get
           )
@@ -118,7 +119,7 @@ class UserDeviceRepoDynamodb(config: Config, db: DynamoDB) extends UserDeviceRep
       )
 
   def accumulate(
-      userId: UserId,
+      identityId: IdentityId,
       stack: ListBuffer[UserDeviceItem],
       source: Task[QueryOutput]
   ): Task[ListBuffer[UserDeviceItem]] =
@@ -129,7 +130,7 @@ class UserDeviceRepoDynamodb(config: Config, db: DynamoDB) extends UserDeviceRep
       if (lastKey.isEmpty) {
         Task.now(stack)
       } else {
-        accumulate(userId, stack, createLoadTask(userId, lastKey))
+        accumulate(identityId, stack, createLoadTask(identityId, lastKey))
       }
     })
 
