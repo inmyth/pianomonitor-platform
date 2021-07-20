@@ -1,18 +1,27 @@
 package com.kerahbiru.platform
 
 import cats.data.Reader
-import com.kerahbiru.platform.repo.{ThingManagementAwsIot, UserClientRepoInterface, ThingManagementInterface}
+import com.kerahbiru.platform.repo.{
+  IdentityManagementCognito,
+  IdentityManagementInterface,
+  ThingManagementAwsIot,
+  ThingManagementInterface,
+  UserDeviceRepoInterface
+}
+import facade.amazonaws.services.cognitoidentity.CognitoIdentity
 import facade.amazonaws.services.dynamodb.DynamoDB
-import facade.amazonaws.services.iot.{Iot, ThingArn}
+import facade.amazonaws.services.iot.{CognitoIdentityPoolId, Iot, ThingArn}
 
 import scala.scalajs.js
 
 final case class Config(
     thingArn: ThingArn,
     thingName: String,
-    thingPrincipal: String,
-    thingRegion: String,
-    ddbDeviceTable: String
+    awsAccount: String,
+    region: String,
+    ddbDeviceTable: String,
+    cognitoUserPoolId: String,
+    cognitoIdentityPoolId: CognitoIdentityPoolId
 )
 
 object Config {
@@ -22,10 +31,17 @@ object Config {
     val thingArn       = js.Dynamic.global.process.env.THING_ARN.asInstanceOf[js.UndefOr[ThingArn]].toOption.get
     val arnEls         = thingArn.split("[:]")
     val arnElsBs       = thingArn.split("[/]")
-    val thingRegion    = arnEls(3)
-    val thingPrincipal = arnEls(4)
+    val region         = arnEls(3)
+    val account        = arnEls(4)
     val thingName      = arnElsBs.last
-    Config(thingArn, thingName, thingPrincipal, thingRegion, ddbDeviceTable)
+    val cognitoUserPoolId =
+      js.Dynamic.global.process.env.COGNITO_USER_POOL_ID.asInstanceOf[js.UndefOr[String]].toOption.get
+    val cognitoIdentityPoolId =
+      js.Dynamic.global.process.env.COGNITO_IDENTITY_POOL_ID
+        .asInstanceOf[js.UndefOr[CognitoIdentityPoolId]]
+        .toOption
+        .get
+    Config(thingArn, thingName, account, region, ddbDeviceTable, cognitoUserPoolId, cognitoIdentityPoolId)
   }
 
   final case class ThingManagement(config: Config) {
@@ -38,17 +54,27 @@ object Config {
     val fromConfig: Reader[Config, ThingManagement] = Reader(ThingManagement(_))
   }
 
-  final case class UserClientRepo(config: Config) {
+  final case class UserDeviceRepo(config: Config) {
 
     val db = new DynamoDB()
 
-    val repo: UserClientRepoInterface = UserClientRepoInterface.real(config, db)
+    val repo: UserDeviceRepoInterface = UserDeviceRepoInterface.real(config, db)
   }
 
-  object UserClientRepo {
+  object UserDeviceRepo {
 
-    val fromConfig: Reader[Config, UserClientRepo] = Reader(UserClientRepo(_))
+    val fromConfig: Reader[Config, UserDeviceRepo] = Reader(UserDeviceRepo(_))
 
   }
 
+  final case class IdentityManagement(config: Config) {
+    val ci = new CognitoIdentity()
+
+    val im: IdentityManagementCognito = IdentityManagementInterface.real(config, ci)
+  }
+
+  object IdentityManagement {
+    val fromConfig: Reader[Config, IdentityManagement] = Reader(IdentityManagement(_))
+
+  }
 }

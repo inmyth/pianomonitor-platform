@@ -1,7 +1,7 @@
 package com.kerahbiru.platform.repo
 
-import com.kerahbiru.platform.Entities.{ClientId, ClientName, UserClientItem, UserId}
-import com.kerahbiru.platform.{Config, DynamoDbError, Entities, ServiceError, ValidationError}
+import com.kerahbiru.platform.Entities.{DeviceId, DeviceName, UserDeviceItem, UserId}
+import com.kerahbiru.platform._
 import facade.amazonaws.services.dynamodb.{
   AttributeMap,
   AttributeValue,
@@ -18,14 +18,13 @@ import scala.collection.mutable.ListBuffer
 import scala.scalajs.js
 import scala.scalajs.js.Dictionary
 
-class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRepoInterface(config) {
+class UserDeviceRepoDynamodb(config: Config, db: DynamoDB) extends UserDeviceRepoInterface(config) {
 
-//  val db: DynamoDB  = config.ddb
   val table: String = config.ddbDeviceTable
 
-  override def putClient(
+  override def putDevice(
       userId: Entities.UserId,
-      item: UserClientItem
+      item: UserDeviceItem
   ): Task[Either[ServiceError, Unit]] =
     Task
       .fromFuture(
@@ -33,9 +32,9 @@ class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRep
           PutItemInput(
             Item = Dictionary(
               "userId"         -> AttributeValue.S(userId.value),
-              "clientId"       -> AttributeValue.S(item.clientId.value),
+              "deviceId"       -> AttributeValue.S(item.deviceId.value),
               "creationTs"     -> AttributeValue.NFromLong(item.creationTs),
-              "clientName"     -> AttributeValue.S(item.clientName.value),
+              "deviceName"     -> AttributeValue.S(item.deviceName.value),
               "policyName"     -> AttributeValue.S(item.policyName),
               "certificateArn" -> AttributeValue.S(item.certificateArn)
             ),
@@ -46,14 +45,14 @@ class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRep
       .map(_ => Right(()))
       .onErrorHandle(e => Left(DynamoDbError(e.getMessage)))
 
-  override def deleteClient(userId: Entities.UserId, clientId: Entities.ClientId): Task[Either[ServiceError, Unit]] =
+  override def deleteDevice(userId: Entities.UserId, deviceId: Entities.DeviceId): Task[Either[ServiceError, Unit]] =
     Task
       .fromFuture(
         db.deleteItemFuture(
           DeleteItemInput(
             Key = Dictionary(
               "userId"   -> AttributeValue.S(userId.value),
-              "clientId" -> AttributeValue.S(clientId.value)
+              "deviceId" -> AttributeValue.S(deviceId.value)
             ),
             TableName = table
           )
@@ -65,23 +64,23 @@ class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRep
         case e                                                       => Left(DynamoDbError(e.getMessage))
       }
 
-  val mapper: AttributeMap => UserClientItem = a => {
-    val clientId       = ClientId(a.get("clientId").get.S.get)
-    val clientName     = ClientName(a.get("clientName").get.S.get)
+  val mapper: AttributeMap => UserDeviceItem = a => {
+    val deviceId       = DeviceId(a.get("deviceId").get.S.get)
+    val deviceName     = DeviceName(a.get("deviceName").get.S.get)
     val creationTs     = a.get("creationTs").get.N.get.toLong
     val policyName     = a.get("policyName").get.S.get
     val certificateArn = a.get("certificateArn").get.S.get
-    UserClientItem(clientId, clientName, creationTs, certificateArn, policyName)
+    UserDeviceItem(deviceId, deviceName, creationTs, certificateArn, policyName)
   }
 
-  override def getClient(userId: Entities.UserId, clientId: ClientId): Task[Either[ServiceError, UserClientItem]] =
+  override def getDevice(userId: Entities.UserId, deviceId: DeviceId): Task[Either[ServiceError, UserDeviceItem]] =
     Task
       .fromFuture(
         db.getItemFuture(
           GetItemInput(
             Key = Dictionary(
               "userId"   -> AttributeValue.S(userId.value),
-              "clientId" -> AttributeValue.S(clientId.value)
+              "deviceId" -> AttributeValue.S(deviceId.value)
             ),
             TableName = table
           )
@@ -95,7 +94,7 @@ class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRep
       )
       .onErrorHandle(e => Left(DynamoDbError(e.getMessage)))
 
-  override def listDevices(userId: Entities.UserId): Task[Either[ServiceError, List[UserClientItem]]] =
+  override def listDevices(userId: Entities.UserId): Task[Either[ServiceError, List[UserDeviceItem]]] =
     accumulate(userId, ListBuffer.empty, createLoadTask(userId, None))
       .map(p => Right(p.toList))
       .onErrorHandle(e => Left(DynamoDbError(e.getMessage)))
@@ -120,9 +119,9 @@ class UserClientRepoDynamodb(config: Config, db: DynamoDB) extends UserClientRep
 
   def accumulate(
       userId: UserId,
-      stack: ListBuffer[UserClientItem],
+      stack: ListBuffer[UserDeviceItem],
       source: Task[QueryOutput]
-  ): Task[ListBuffer[UserClientItem]] =
+  ): Task[ListBuffer[UserDeviceItem]] =
     source.flatMap(p => {
       val lastKey = p.LastEvaluatedKey.toOption
       val events  = p.Items.get.map(mapper)

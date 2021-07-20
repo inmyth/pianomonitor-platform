@@ -1,8 +1,9 @@
 package com.kerahbiru.platform.repo
 
-import com.kerahbiru.platform.Entities.{CertCreationResponse, ClientId, UserId}
+import com.kerahbiru.platform.Entities.{CertCreationResponse, DeviceId, UserId}
 import com.kerahbiru.platform.repo.ThingManagementAwsIot.createPolicyJson
 import com.kerahbiru.platform.{Config, Entities, IotError, ServiceError}
+import facade.amazonaws.services.cognitoidentity.IdentityId
 import facade.amazonaws.services.iot.{
   AttachPolicyRequest,
   AttachThingPrincipalRequest,
@@ -25,14 +26,14 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
 
   override def createPolicy(
       userId: Entities.UserId,
-      clientId: Entities.ClientId
+      deviceId: Entities.DeviceId
   ): Task[Either[ServiceError, PolicyName]] =
     Task
       .fromFuture {
         iot.createPolicyFuture(
           CreatePolicyRequest(
-            policyDocument = createPolicyJson(config.thingPrincipal, config.thingRegion, userId, clientId),
-            policyName = s"${userId.value}_${clientId.value}"
+            policyDocument = createPolicyJson(config.awsAccount, config.region, userId, deviceId),
+            policyName = s"${userId.value}_${deviceId.value}"
           )
         )
       }
@@ -72,6 +73,19 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
           AttachPolicyRequest(
             policyName = policyName,
             target = certificateArn
+          )
+        )
+      )
+      .map(_ => Right())
+      .onErrorHandle(e => Left(IotError(e.getMessage)))
+
+  override def attachPolicyToUser(policyName: PolicyName, identityId: IdentityId): Task[Either[ServiceError, Unit]] =
+    Task
+      .fromFuture(
+        iot.attachPolicyFuture(
+          AttachPolicyRequest(
+            policyName = policyName,
+            target = identityId
           )
         )
       )
@@ -122,6 +136,19 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
       .map(_ => Right())
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
+  override def detachPolicyFromUser(policyName: PolicyName, identityId: IdentityId): Task[Either[ServiceError, Unit]] =
+    Task
+      .fromFuture(
+        iot.detachPolicyFuture(
+          DetachPolicyRequest(
+            policyName = policyName,
+            target = identityId
+          )
+        )
+      )
+      .map(_ => Right())
+      .onErrorHandle(e => Left(IotError(e.getMessage)))
+
   override def deleteCertificate(certificateId: CertificateId): Task[Either[ServiceError, Unit]] =
     Task
       .fromFuture(
@@ -159,23 +186,24 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
       )
       .map(_ => Right())
       .onErrorHandle(e => Left(IotError(e.getMessage)))
+
 }
 
 object ThingManagementAwsIot {
 
-  def createPolicyJson(principal: String, region: String, userId: UserId, clientId: ClientId): String =
+  def createPolicyJson(principal: String, region: String, userId: UserId, deviceId: DeviceId): String =
     s"""{
       |"Version": "2012-10-17",
       |"Statement": [
       |  {
       |    "Effect": "Allow",
       |    "Action": "iot:Subscribe",
-      |    "Resource": "arn:aws:iot:$region:$principal:topicfilter/${clientId.value}"
+      |    "Resource": "arn:aws:iot:$region:$principal:topicfilter/${userId.value}/${deviceId.value}"
       |  },
       |  {
       |    "Effect": "Allow",
       |    "Action": "iot:Connect",
-      |    "Resource": "arn:aws:iot:$region:$principal:client/${clientId.value}"
+      |    "Resource": "arn:aws:iot:$region:$principal:client/${userId.value}/${deviceId.value}"
       |  },
       |  {
       |    "Effect": "Allow",
@@ -184,7 +212,7 @@ object ThingManagementAwsIot {
       |        "iot:Receive",
       |        "iot:Republish"
       |      ],
-      |    "Resource": "arn:aws:iot:$region:$principal:topic/${clientId.value}"
+      |    "Resource": "arn:aws:iot:$region:$principal:topic/${userId.value}/${deviceId.value}"
       |  }
       |]
       |}""".stripMargin

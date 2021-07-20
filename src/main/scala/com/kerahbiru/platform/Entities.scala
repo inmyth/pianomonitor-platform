@@ -1,58 +1,35 @@
 package com.kerahbiru.platform
 
-import facade.amazonaws.services.iot.{CertificateArn, CertificateId, CertificatePem, KeyPair, PolicyArn, PolicyName}
+import facade.amazonaws.services.iot.{CertificateArn, CertificatePem, KeyPair, PolicyName}
+import io.circe.generic.extras.semiauto.deriveUnwrappedEncoder
+import io.circe.generic.semiauto._
 import io.circe.{Decoder, Encoder}
-import io.circe.generic.extras.semiauto.{deriveUnwrappedCodec, deriveUnwrappedDecoder, deriveUnwrappedEncoder}
-import net.exoego.facade.aws_lambda.APIGatewayProxyEvent
 
 import java.util.UUID
-import scala.scalajs.js
-//import io.circe.generic.semiauto.deriveDecoder
-import io.circe.generic.semiauto._
-import io.circe.generic.extras.defaults._
-//import io.circe.generic.auto._
-//import io.circe.parser.decode
 
 object Entities {
 
-  // topic : topic/userid/client111
-  /*
-  {
-  [
-    {
-    "type": "temperature",
-    "value": 30.1
-    },
-    {
-    "type": "humidity",
-    "value": 13
-    }
-  ]
-  }
+  case class UserId(value: String) extends AnyVal // sub
 
+  case class DeviceId(value: String) extends AnyVal
 
-   */
-  case class UserId(value: String) extends AnyVal
+  case class DeviceName(value: String) extends AnyVal
 
-  case class ClientId(value: String) extends AnyVal
+  object DeviceName {
 
-  case class ClientName(value: String) extends AnyVal
-
-  object ClientName {
-
-    def create(value: String): Either[ServiceError, ClientName] =
-      if (value.length > 20) Left(ValidationError("Client name too long")) else Right(ClientName(value))
+    def create(value: String): Either[ServiceError, DeviceName] =
+      if (value.length > 30) Left(ValidationError("Device name too long")) else Right(DeviceName(value))
 
   }
 
-  object ClientId {
+  object DeviceId {
 
-    def generate: ClientId = ClientId(UUID.randomUUID().toString)
+    def generate: DeviceId = DeviceId(UUID.randomUUID().toString.split("[-]").head)
   }
 
-  case class UserClientItem(
-      clientId: ClientId,
-      clientName: ClientName,
+  case class UserDeviceItem(
+      deviceId: DeviceId,
+      deviceName: DeviceName,
       creationTs: Long,
       certificateArn: CertificateArn,
       policyName: PolicyName
@@ -66,49 +43,29 @@ object Entities {
       body: String
   )
 
-  case class CreateClientResponse(
-      clientId: ClientId,
-      clientName: ClientName,
+  case class CreateDeviceResponse(
+      deviceId: DeviceId,
+      deviceName: DeviceName,
       certificateArn: CertificateArn,
       certificatePem: CertificatePem,
       privateKey: String,
       publicKey: String
   )
 
-//  object HttpPayload {
-//
-//    def build(
-//        path: String,
-//        pathParameters: Map[String, String],
-//        body: String
-//    ): HttpPayload =
-//      HttpPayload(path, pathParameters, body)
-//
-//    def from(event: APIGatewayProxyEvent): HttpPayload =
-//      HttpPayload.build(
-//        event.path,
-//        Option(event.pathParameters)
-//          .map(_.asInstanceOf[js.Dictionary[String]].toMap[String, String])
-//          .getOrElse(Map.empty[String, String]),
-//        event.body.asInstanceOf[String]
-//      )
-//
-//  }
+  case class CreateDeviceDto(name: String)
 
-  case class CreateClientDto(name: String)
+  case class DeleteDeviceDto(deviceId: String)
 
-  case class DeleteClientDto(clientId: String)
+  implicit val DeleteDeviceDtoDecoder: Decoder[DeleteDeviceDto] = deriveDecoder
 
-  implicit val DeleteClientDtoDecoder: Decoder[DeleteClientDto] = deriveDecoder
+  implicit val CreateDeviceDtoDecoder: Decoder[CreateDeviceDto] = deriveDecoder
 
-  implicit val CreateClientDtoDecoder: Decoder[CreateClientDto] = deriveDecoder
+  implicit val DeviceNameEncoder: Encoder[DeviceName] = deriveUnwrappedEncoder
 
-  implicit val ClientNameEncoder: Encoder[ClientName] = deriveUnwrappedEncoder
+  implicit val DeviceIdEncoder: Encoder[DeviceId] = deriveUnwrappedEncoder
 
-  implicit val ClientIdEncoder: Encoder[ClientId] = deriveUnwrappedEncoder
+  implicit val UserDeviceItemEncoder: Encoder[UserDeviceItem] = deriveEncoder
 
-  implicit val UserClientItemEncoder: Encoder[UserClientItem] = deriveEncoder
-
-  implicit val CreateClientResponseEncoder: Encoder[CreateClientResponse] = deriveEncoder
+  implicit val CreateDeviceResponseEncoder: Encoder[CreateDeviceResponse] = deriveEncoder
 
 }
