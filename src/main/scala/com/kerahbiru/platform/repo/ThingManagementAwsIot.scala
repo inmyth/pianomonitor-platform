@@ -9,11 +9,13 @@ import facade.amazonaws.services.iot.{
   AttachThingPrincipalRequest,
   CertificateArn,
   CertificateId,
+  CertificatePem,
   CertificateStatus,
   CreateKeysAndCertificateRequest,
   CreatePolicyRequest,
   DeleteCertificateRequest,
   DeletePolicyRequest,
+  DescribeCertificateRequest,
   DetachPolicyRequest,
   DetachThingPrincipalRequest,
   Iot,
@@ -187,6 +189,22 @@ class ThingManagementAwsIot(config: Config, iot: Iot) extends ThingManagementInt
       .map(_ => Right(()))
       .onErrorHandle(e => Left(IotError(e.getMessage)))
 
+  override def getCertificatePem(certificateId: CertificateId): Task[Either[IotError, CertificatePem]] =
+    Task
+      .fromFuture(
+        iot.describeCertificateFuture(
+          DescribeCertificateRequest(
+            certificateId = certificateId
+          )
+        )
+      )
+      .map(p =>
+        p.certificateDescription.toOption match {
+          case Some(value) => Right(value.certificatePem.toOption.get)
+          case None        => Left(IotError("Certificate description empty"))
+        }
+      )
+      .onErrorHandle(e => Left(IotError(e.getMessage)))
 }
 
 object ThingManagementAwsIot {

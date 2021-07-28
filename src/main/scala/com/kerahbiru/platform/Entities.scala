@@ -47,9 +47,16 @@ object Entities {
       certificateArn: CertificateArn,
       certificatePem: CertificatePem,
       privateKey: String,
-      publicKey: String
+      publicKey: String,
+      topic: String
   )
 
+  case class GetDeviceResponse(
+      deviceId: DeviceId,
+      deviceName: DeviceName,
+      topic: String,
+      pem: CertificatePem
+  )
   case class CreateDeviceDto(name: String)
 
   case class DeleteDeviceDto(deviceId: String)
@@ -65,5 +72,7 @@ object Entities {
   implicit val UserDeviceItemEncoder: Encoder[UserDeviceItem] = deriveEncoder
 
   implicit val CreateDeviceResponseEncoder: Encoder[CreateDeviceResponse] = deriveEncoder
+
+  implicit val GetDeviceResponseEncoder: Encoder[GetDeviceResponse] = deriveEncoder
 
 }

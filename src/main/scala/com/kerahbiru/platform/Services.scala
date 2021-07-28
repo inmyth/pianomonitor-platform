@@ -8,14 +8,17 @@ import com.kerahbiru.platform.Entities.{
   DeleteDeviceDto,
   DeviceId,
   DeviceName,
+  GetDeviceResponse,
   UserDeviceItem
 }
 import com.kerahbiru.platform.repo.{IdentityManagementCognito, ThingManagementInterface, UserDeviceRepoInterface}
 import facade.amazonaws.services.cognitoidentity.IdentityId
+import facade.amazonaws.services.iot.{CertificateArn, PolicyName}
 import io.circe.Json
 import io.circe.parser.decode
 import io.circe.syntax._
 import monix.eval.Task
+import net.exoego.facade.aws_lambda.ALBEvent.QueryStringParameters
 import net.exoego.facade.aws_lambda.{APIGatewayProxyEvent, APIGatewayProxyResult}
 
 import scala.scalajs.js
@@ -47,13 +50,15 @@ case class Services(
       _ <- EitherT(tm.attachPolicyToUser(d, identityId))
       f <- EitherT.right(Task(System.currentTimeMillis() / 1000))
       _ <- EitherT(repo.putDevice(identityId, UserDeviceItem(c, b, f, e.certificateArn, d)))
+      topic = getTopicFromPolicyName(d)
       g = CreateDeviceResponse(
         c,
         b,
         e.certificateArn,
         e.certificatePem,
         e.keyPair.PrivateKey.toOption.get,
-        e.keyPair.PublicKey.toOption.get
+        e.keyPair.PublicKey.toOption.get,
+        topic
       )
     } yield g.asJson
 
@@ -77,6 +82,24 @@ case class Services(
       _ <- EitherT(repo.deleteDevice(identityId, a))
     } yield "{}".asJson
 
+  def getDevice(identityId: IdentityId, params: Option[QueryStringParameters]): EitherT[Task, ServiceError, Json] =
+    for {
+      a <- EitherT(
+        Task(
+          (for {
+            x <- params
+            y <- x.get("deviceId")
+            z = Right(DeviceId(y))
+          } yield z).getOrElse(Left(ApiError("Bad param deviceId")))
+        )
+      )
+      b <- EitherT(repo.getDevice(identityId, a))
+      certId = b.certificateArn.split("[/]").last
+      c <- EitherT(tm.getCertificatePem(certId))
+      topic = getTopicFromPolicyName(b.policyName)
+      d     = GetDeviceResponse(b.deviceId, b.deviceName, topic, c)
+    } yield d.asJson
+
   def listDevices(identityId: IdentityId): EitherT[Task, ServiceError, Json] =
     for {
       a <- EitherT(repo.listDevices(identityId))
@@ -84,20 +107,21 @@ case class Services(
 
     } yield b
 
-  def process(event: APIGatewayProxyEvent): Task[APIGatewayProxyResult] =
+  def process(event: APIGatewayProxyEvent): Task[APIGatewayProxyResult] = {
+    def errorPath(path: String): EitherT[Task, ServiceError, Json] =
+      EitherT.fromEither(Left(ApiError(s"$path not recognized")))
     (for {
-
       a <- EitherT(im.getIdentityId(event.headers.get("Authorization").get))
-      b <- EitherT(Task {
-        event.path match {
-          case "/device/list"   => Right(listDevices(a))
-          case "/device/create" => Right(createDevice(a, event.body.asInstanceOf[String]))
-          case "/device/delete" => Right(deleteDevice(a, event.body.asInstanceOf[String]))
-          case _                => Left(ApiError(s"${event.path} not recognized"))
-        }
-      })
-      c <- b
-    } yield c).value.map(response)
+      b <- event.path match {
+        case "/device/list"   => listDevices(a)
+        case "/device/create" => createDevice(a, event.body.asInstanceOf[String])
+        case "/device/delete" => deleteDevice(a, event.body.asInstanceOf[String])
+        case "/device/get" =>
+          getDevice(a, event.queryStringParameters.asInstanceOf[js.UndefOr[QueryStringParameters]].toOption)
+        case _ => errorPath(event.path)
+      }
+    } yield b).value.map(response)
+  }
 
   val response: Either[ServiceError, Json] => APIGatewayProxyResult = {
     case Left(e) =>
@@ -121,6 +145,7 @@ case class Services(
       )
   }
 
+  def getTopicFromPolicyName(policyName: PolicyName): String = policyName.replace("_", "/")
 }
 
 object Services {
